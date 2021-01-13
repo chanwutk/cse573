@@ -17,12 +17,11 @@ In search.py, you will implement generic search algorithms which are called by
 Pacman agents (in searchAgents.py).
 """
 
-from typing import Dict, Set, Tuple, List, Union
+from typing import Any, Dict, Generic, Set, Tuple, List, TypeVar, Union
 import util
 
-State = Tuple[int, int]
-
-class SearchProblem:
+State = TypeVar('State')
+class SearchProblem(Generic[State]):
     """
     This class outlines the structure of a search problem, but doesn't implement
     any of the methods (in object-oriented terminology: an abstract class).
@@ -65,7 +64,7 @@ class SearchProblem:
         pass
 
 
-def tinyMazeSearch(problem: SearchProblem) -> List[str]:
+def tinyMazeSearch(problem: SearchProblem[Any]) -> List[str]:
     """
     Returns a sequence of moves that solves tinyMaze.  For any other maze, the
     sequence of moves will be incorrect, so only use this for tinyMaze.
@@ -75,16 +74,17 @@ def tinyMazeSearch(problem: SearchProblem) -> List[str]:
     w = Directions.WEST
     return  [s, s, w, s, w, w, s, w]
             
+State = TypeVar('State')
 def _build_path(parents: Dict[State, Tuple[State, str]], state: State) -> List[str]:
     ans: List[str] = []
-    state, direction = parents[state]
+    state, direction, *_ = parents[state]
     while state is not None:
         ans.append(direction)
-        state, direction = parents[state]
+        state, direction, *_ = parents[state]
     return ans[::-1]
     
-def _firstSearch(problem: SearchProblem, collection: util.LinearCollection[Tuple[State, str, State]]) -> List[str]:
-    """Search nodes in the search tree."""
+State = TypeVar('State')
+def _firstSearch(problem: SearchProblem[State], collection) -> List[str]:
     parents: Dict[State, Tuple[State, str]] = {}
 
     start = problem.getStartState()
@@ -102,7 +102,8 @@ def _firstSearch(problem: SearchProblem, collection: util.LinearCollection[Tuple
             if successor not in parents:
                 collection.push((successor, action, state))
 
-def depthFirstSearch(problem: SearchProblem) -> List[str]:
+State = TypeVar('State')
+def depthFirstSearch(problem: SearchProblem[State]) -> List[str]:
     """
     Search the deepest nodes in the search tree first.
 
@@ -117,17 +118,41 @@ def depthFirstSearch(problem: SearchProblem) -> List[str]:
     print("Start's successors:", problem.getSuccessors(problem.getStartState()))
     """
     "*** YOUR CODE HERE ***"
-    return _firstSearch(problem, util.Stack[Tuple[State, str, State]]())
+    return _firstSearch(problem, util.Stack())
 
-def breadthFirstSearch(problem: SearchProblem) -> List[str]:
+State = TypeVar('State')
+def breadthFirstSearch(problem: SearchProblem[State]) -> List[str]:
     """Search the shallowest nodes in the search tree first."""
     "*** YOUR CODE HERE ***"
-    return _firstSearch(problem, util.Queue[Tuple[State, str, State]]())
+    return _firstSearch(problem, util.Queue())
 
-def uniformCostSearch(problem):
+def uniformCostSearch(problem: SearchProblem[State]):
     """Search the node of least total cost first."""
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    start = problem.getStartState()
+
+    state_table: Dict[State, Tuple[State, str, float]] = {}
+    state_table[start] = (None, None, 0)
+
+    pqueue = util.PriorityQueue()
+    pqueue.push(start, 0)
+
+    while not pqueue.isEmpty():
+        state = pqueue.pop()
+        _, _, state_cost = state_table[state]
+
+        if (problem.isGoalState(state)):
+            return _build_path(state_table, state)
+        for successor, action, cost in problem.getSuccessors(state):
+            acc_cost = state_cost + cost
+            if successor not in state_table:
+                pqueue.push(successor, acc_cost)
+            elif state_table[successor][2] > acc_cost:
+                pqueue.update(successor, acc_cost)
+
+            if successor not in state_table or state_table[successor][2] > acc_cost:
+                state_table[successor] = (state, action, acc_cost)
+
 
 def nullHeuristic(state, problem=None):
     """
