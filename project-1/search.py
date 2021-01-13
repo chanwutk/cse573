@@ -129,6 +129,18 @@ def breadthFirstSearch(problem: SearchProblem[State]) -> List[str]:
 def uniformCostSearch(problem: SearchProblem[State]):
     """Search the node of least total cost first."""
     "*** YOUR CODE HERE ***"
+    return aStarSearch(problem)
+
+def nullHeuristic(state, problem=None):
+    """
+    A heuristic function estimates the cost from the current state to the nearest
+    goal in the provided SearchProblem.  This heuristic is trivial.
+    """
+    return 0
+
+def aStarSearch(problem, heuristic=nullHeuristic):
+    """Search the node that has the lowest combined cost and heuristic first."""
+    "*** YOUR CODE HERE ***"
     start = problem.getStartState()
 
     state_table: Dict[State, Tuple[State, str, float]] = {}
@@ -145,26 +157,14 @@ def uniformCostSearch(problem: SearchProblem[State]):
             return _build_path(state_table, state)
         for successor, action, cost in problem.getSuccessors(state):
             acc_cost = state_cost + cost
+            heu_cost = acc_cost + heuristic(successor, problem)
             if successor not in state_table:
-                pqueue.push(successor, acc_cost)
+                pqueue.push(successor, heu_cost)
             elif state_table[successor][2] > acc_cost:
-                pqueue.update(successor, acc_cost)
+                pqueue.update(successor, heu_cost)
 
             if successor not in state_table or state_table[successor][2] > acc_cost:
                 state_table[successor] = (state, action, acc_cost)
-
-
-def nullHeuristic(state, problem=None):
-    """
-    A heuristic function estimates the cost from the current state to the nearest
-    goal in the provided SearchProblem.  This heuristic is trivial.
-    """
-    return 0
-
-def aStarSearch(problem, heuristic=nullHeuristic):
-    """Search the node that has the lowest combined cost and heuristic first."""
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
 
 
 # Abbreviations
