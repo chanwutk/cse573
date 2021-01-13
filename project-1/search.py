@@ -17,7 +17,7 @@ In search.py, you will implement generic search algorithms which are called by
 Pacman agents (in searchAgents.py).
 """
 
-from typing import Any, Dict, Generic, Set, Tuple, List, TypeVar, Union
+from typing import Any, Dict, Generic, Tuple, List, TypeVar
 import util
 
 State = TypeVar('State')
@@ -73,34 +73,58 @@ def tinyMazeSearch(problem: SearchProblem[Any]) -> List[str]:
     s = Directions.SOUTH
     w = Directions.WEST
     return  [s, s, w, s, w, w, s, w]
-            
+
+
 State = TypeVar('State')
-def _build_path(parents: Dict[State, Tuple[State, str]], state: State) -> List[str]:
+def _build_path(
+    parents: Dict[State, Tuple[State, str]],
+    state: State
+) -> List[str]:
     ans: List[str] = []
     state, direction, *_ = parents[state]
     while state is not None:
         ans.append(direction)
         state, direction, *_ = parents[state]
     return ans[::-1]
-    
-State = TypeVar('State')
-def _firstSearch(problem: SearchProblem[State], collection) -> List[str]:
-    parents: Dict[State, Tuple[State, str]] = {}
 
+
+def nullHeuristic(state, problem=None):
+    """
+    A heuristic function estimates the cost from the current state to the nearest
+    goal in the provided SearchProblem.  This heuristic is trivial.
+    """
+    return 0
+
+
+State = TypeVar('State')
+def _search(
+    problem: SearchProblem[State],
+    collection,
+    heuristic=nullHeuristic
+) -> List[str]:
     start = problem.getStartState()
-    collection.push((start, None, None))
+    collection.push((start, None, None, 0, 0))
+
+    state_table: Dict[State, Tuple[State, str, float]] = {}
+    state_table[start] = (None, None, float('inf'))
+
+    def lower_cost(state: State, cost: float):
+        return state_table.get(state, (float('inf'),))[-1] > cost
 
     while not collection.isEmpty():
-        state, direction, parent = collection.pop()
-        if state in parents:
+        state, parent, action, cost, _ = collection.pop()
+        if not lower_cost(state, cost):
             continue
-        parents[state] = (parent, direction)
+        state_table[state] = (parent, action, cost)
 
         if (problem.isGoalState(state)):
-            return _build_path(parents, state)
-        for successor, action, _ in problem.getSuccessors(state):
-            if successor not in parents:
-                collection.push((successor, action, state))
+            return _build_path(state_table, state)
+        for _state, _action, _cost in problem.getSuccessors(state):
+            acc_cost = cost + _cost
+            heu_cost = acc_cost + heuristic(_state, problem)
+            if lower_cost(_state, acc_cost):
+                collection.push((_state, state, _action, acc_cost, heu_cost))
+
 
 State = TypeVar('State')
 def depthFirstSearch(problem: SearchProblem[State]) -> List[str]:
@@ -118,53 +142,29 @@ def depthFirstSearch(problem: SearchProblem[State]) -> List[str]:
     print("Start's successors:", problem.getSuccessors(problem.getStartState()))
     """
     "*** YOUR CODE HERE ***"
-    return _firstSearch(problem, util.Stack())
+    return _search(problem, util.Stack())
+
 
 State = TypeVar('State')
 def breadthFirstSearch(problem: SearchProblem[State]) -> List[str]:
     """Search the shallowest nodes in the search tree first."""
     "*** YOUR CODE HERE ***"
-    return _firstSearch(problem, util.Queue())
+    return _search(problem, util.Queue())
 
+
+State = TypeVar('State')
 def uniformCostSearch(problem: SearchProblem[State]):
     """Search the node of least total cost first."""
     "*** YOUR CODE HERE ***"
     return aStarSearch(problem)
 
-def nullHeuristic(state, problem=None):
-    """
-    A heuristic function estimates the cost from the current state to the nearest
-    goal in the provided SearchProblem.  This heuristic is trivial.
-    """
-    return 0
 
-def aStarSearch(problem, heuristic=nullHeuristic):
+State = TypeVar('State')
+def aStarSearch(problem: SearchProblem[State], heuristic=nullHeuristic):
     """Search the node that has the lowest combined cost and heuristic first."""
     "*** YOUR CODE HERE ***"
-    start = problem.getStartState()
-
-    state_table: Dict[State, Tuple[State, str, float]] = {}
-    state_table[start] = (None, None, 0)
-
-    pqueue = util.PriorityQueue()
-    pqueue.push(start, 0)
-
-    while not pqueue.isEmpty():
-        state = pqueue.pop()
-        _, _, state_cost = state_table[state]
-
-        if (problem.isGoalState(state)):
-            return _build_path(state_table, state)
-        for successor, action, cost in problem.getSuccessors(state):
-            acc_cost = state_cost + cost
-            heu_cost = acc_cost + heuristic(successor, problem)
-            if successor not in state_table:
-                pqueue.push(successor, heu_cost)
-            elif state_table[successor][2] > acc_cost:
-                pqueue.update(successor, heu_cost)
-
-            if successor not in state_table or state_table[successor][2] > acc_cost:
-                state_table[successor] = (state, action, acc_cost)
+    collection = util.PriorityQueueWithFunction(lambda x: x[-1])
+    return _search(problem, collection, heuristic)
 
 
 # Abbreviations
