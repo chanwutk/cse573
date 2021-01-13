@@ -17,7 +17,10 @@ In search.py, you will implement generic search algorithms which are called by
 Pacman agents (in searchAgents.py).
 """
 
+from typing import Dict, Set, Tuple, List, Union
 import util
+
+State = Tuple[int, int]
 
 class SearchProblem:
     """
@@ -27,21 +30,21 @@ class SearchProblem:
     You do not need to change anything in this class, ever.
     """
 
-    def getStartState(self):
+    def getStartState(self) -> State:
         """
         Returns the start state for the search problem.
         """
-        util.raiseNotDefined()
+        pass
 
-    def isGoalState(self, state):
+    def isGoalState(self, state: State) -> bool:
         """
           state: Search state
 
         Returns True if and only if the state is a valid goal state.
         """
-        util.raiseNotDefined()
+        pass
 
-    def getSuccessors(self, state):
+    def getSuccessors(self, state: State) -> List[Tuple[State, str, float]]:
         """
           state: Search state
 
@@ -50,19 +53,19 @@ class SearchProblem:
         state, 'action' is the action required to get there, and 'stepCost' is
         the incremental cost of expanding to that successor.
         """
-        util.raiseNotDefined()
+        pass
 
-    def getCostOfActions(self, actions):
+    def getCostOfActions(self, actions: List[str]) -> List[float]:
         """
          actions: A list of actions to take
 
         This method returns the total cost of a particular sequence of actions.
         The sequence must be composed of legal moves.
         """
-        util.raiseNotDefined()
+        pass
 
 
-def tinyMazeSearch(problem):
+def tinyMazeSearch(problem: SearchProblem) -> List[str]:
     """
     Returns a sequence of moves that solves tinyMaze.  For any other maze, the
     sequence of moves will be incorrect, so only use this for tinyMaze.
@@ -71,8 +74,35 @@ def tinyMazeSearch(problem):
     s = Directions.SOUTH
     w = Directions.WEST
     return  [s, s, w, s, w, w, s, w]
+            
+def _build_path(parents: Dict[State, Tuple[State, str]], state: State) -> List[str]:
+    ans: List[str] = []
+    state, direction = parents[state]
+    while state is not None:
+        ans.append(direction)
+        state, direction = parents[state]
+    return ans[::-1]
+    
+def _firstSearch(problem: SearchProblem, collection: util.LinearCollection[Tuple[State, str, State]]) -> List[str]:
+    """Search nodes in the search tree."""
+    parents: Dict[State, Tuple[State, str]] = {}
 
-def depthFirstSearch(problem):
+    start = problem.getStartState()
+    collection.push((start, None, None))
+
+    while not collection.isEmpty():
+        state, direction, parent = collection.pop()
+        if state in parents:
+            continue
+        parents[state] = (parent, direction)
+
+        if (problem.isGoalState(state)):
+            return _build_path(parents, state)
+        for successor, action, _ in problem.getSuccessors(state):
+            if successor not in parents:
+                collection.push((successor, action, state))
+
+def depthFirstSearch(problem: SearchProblem) -> List[str]:
     """
     Search the deepest nodes in the search tree first.
 
@@ -87,12 +117,12 @@ def depthFirstSearch(problem):
     print("Start's successors:", problem.getSuccessors(problem.getStartState()))
     """
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    return _firstSearch(problem, util.Stack[Tuple[State, str, State]]())
 
-def breadthFirstSearch(problem):
+def breadthFirstSearch(problem: SearchProblem) -> List[str]:
     """Search the shallowest nodes in the search tree first."""
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    return _firstSearch(problem, util.Queue[Tuple[State, str, State]]())
 
 def uniformCostSearch(problem):
     """Search the node of least total cost first."""

@@ -29,6 +29,7 @@
 import sys
 import inspect
 import heapq, random
+from typing import Callable, TypeVar, Generic, List, Tuple
 
 
 class FixedRandom:
@@ -126,16 +127,32 @@ class FixedRandom:
         self.random = random.Random()
         self.random.setstate(fixedState)
 
+T = TypeVar('T')
+
 """
  Data structures useful for implementing SearchAgents
 """
 
-class Stack:
+class LinearCollection(Generic[T]):
+    def push(self, item: T) -> None:
+        "Push 'item' onto the collection"
+        pass
+
+    def pop(self) -> T:
+        "Pop the first item from the collection"
+        pass
+
+    def isEmpty(self) -> bool:
+        "Returns true if the collection is empty"
+        pass
+
+
+class Stack(LinearCollection[T], Generic[T]):
     "A container with a last-in-first-out (LIFO) queuing policy."
     def __init__(self):
-        self.list = []
+        self.list: List[T] = []
 
-    def push(self,item):
+    def push(self,item: T):
         "Push 'item' onto the stack"
         self.list.append(item)
 
@@ -147,12 +164,12 @@ class Stack:
         "Returns true if the stack is empty"
         return len(self.list) == 0
 
-class Queue:
+class Queue(LinearCollection[T], Generic[T]):
     "A container with a first-in-first-out (FIFO) queuing policy."
     def __init__(self):
-        self.list = []
+        self.list: List[T] = []
 
-    def push(self,item):
+    def push(self,item: T):
         "Enqueue the 'item' into the queue"
         self.list.insert(0,item)
 
@@ -167,7 +184,8 @@ class Queue:
         "Returns true if the queue is empty"
         return len(self.list) == 0
 
-class PriorityQueue:
+S = TypeVar('S', int, float)
+class PriorityQueue(Generic[T, S]):
     """
       Implements a priority queue data structure. Each inserted item
       has a priority associated with it and the client is usually interested
@@ -175,10 +193,10 @@ class PriorityQueue:
       data structure allows O(1) access to the lowest-priority item.
     """
     def  __init__(self):
-        self.heap = []
+        self.heap: List[Tuple[S, int, T]] = []
         self.count = 0
 
-    def push(self, item, priority):
+    def push(self, item: T, priority: S):
         entry = (priority, self.count, item)
         heapq.heappush(self.heap, entry)
         self.count += 1
@@ -190,7 +208,7 @@ class PriorityQueue:
     def isEmpty(self):
         return len(self.heap) == 0
 
-    def update(self, item, priority):
+    def update(self, item: T, priority: S):
         # If item already in priority queue with higher priority, update its priority and rebuild the heap.
         # If item already in priority queue with equal or lower priority, do nothing.
         # If item not in priority queue, do the same thing as self.push.
@@ -205,19 +223,19 @@ class PriorityQueue:
         else:
             self.push(item, priority)
 
-class PriorityQueueWithFunction(PriorityQueue):
+class PriorityQueueWithFunction(PriorityQueue[T, S], Generic[T, S]):
     """
     Implements a priority queue with the same push/pop signature of the
     Queue and the Stack classes. This is designed for drop-in replacement for
     those two classes. The caller has to provide a priority function, which
     extracts each item's priority.
     """
-    def  __init__(self, priorityFunction):
+    def  __init__(self, priorityFunction: Callable[[T], S]):
         "priorityFunction (item) -> priority"
         self.priorityFunction = priorityFunction      # store the priority function
         PriorityQueue.__init__(self)        # super-class initializer
 
-    def push(self, item):
+    def push(self, item: T):
         "Adds an item to the queue with priority from the priority function"
         PriorityQueue.push(self, item, self.priorityFunction(item))
 
