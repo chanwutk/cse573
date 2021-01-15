@@ -34,12 +34,14 @@ description for details.
 Good luck and happy searching!
 """
 
+from typing import Dict, List, Tuple
 from game import Directions
 from game import Agent
 from game import Actions
 import util
 import time
 import search
+import pacman
 
 class GoWestAgent(Agent):
     "An agent that goes West until it can't."
@@ -266,6 +268,19 @@ def euclideanHeuristic(position, problem, info={}):
 # This portion is incomplete.  Time to write code!  #
 #####################################################
 
+Coordinate = Tuple[int, int]
+
+class PositionWithFoods:
+    def __init__(self, position: Coordinate, foods: List[Coordinate]):
+        self.position = position
+        self.foods = set(foods)
+    
+    def __eq__(self, other):
+        return self.position == other.position and self.foods == other.foods
+
+    def __hash__(self):
+        return hash((self.position, tuple(sorted(self.foods))))
+
 class CornersProblem(search.SearchProblem):
     """
     This search problem finds paths through all four corners of a layout.
@@ -273,7 +288,7 @@ class CornersProblem(search.SearchProblem):
     You must select a suitable state space and successor function
     """
 
-    def __init__(self, startingGameState):
+    def __init__(self, startingGameState: pacman.GameState):
         """
         Stores the walls, pacman's starting position and corners.
         """
@@ -288,6 +303,41 @@ class CornersProblem(search.SearchProblem):
         # Please add any code here which you would like to use
         # in initializing the problem
         "*** YOUR CODE HERE ***"
+        self.startState = PositionWithFoods(self.startingPosition, self.corners)
+        self.startingGameState = startingGameState
+        corners_distance = {}
+        for c1 in self.corners:
+            for c2 in self.corners:
+                if c1 == c2:
+                    corners_distance[(c1, c2)] = 0
+                elif (c2, c2) in corners_distance:
+                    corners_distance[(c1, c2)] = corners_distance[(c2, c1)]
+                else:
+                    problem = PositionSearchProblem(startingGameState, goal=c1, start=c2, warn=False)
+                    corners_distance[(c1, c2)] = len(search.aStarSearch(problem, manhattanHeuristic))
+        
+        self.to_all_corners: Dict[Tuple[Coordinate, Tuple[Coordinate, ...]], float] = {}
+        def tmp(corners, curr):
+            key = (curr, tuple(sorted(corners)))
+            if len(corners) == 1:
+                self.to_all_corners[key] = 0
+                return 0
+
+            if key in self.to_all_corners:
+                return self.to_all_corners[key]
+
+            left_overs = list(corners)
+            left_overs.remove(curr)
+            _min = float('inf')
+            for c in left_overs:
+                distance = corners_distance[(curr, c)] + tmp(left_overs, c)
+                _min = min(_min, distance)
+
+            self.to_all_corners[key] = _min
+            return _min
+
+        for c in self.corners:
+            tmp(self.corners, c)
 
     def getStartState(self):
         """
@@ -295,16 +345,16 @@ class CornersProblem(search.SearchProblem):
         space)
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return self.startState
 
-    def isGoalState(self, state):
+    def isGoalState(self, state: PositionWithFoods):
         """
         Returns whether this search state is a goal state of the problem.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return len(state.foods) == 0
 
-    def getSuccessors(self, state):
+    def getSuccessors(self, state: PositionWithFoods):
         """
         Returns successor states, the actions they require, and a cost of 1.
 
@@ -316,6 +366,8 @@ class CornersProblem(search.SearchProblem):
         """
 
         successors = []
+        x, y = state.position
+        foods = state.foods
         for action in [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST]:
             # Add a successor state to the successor list if the action is legal
             # Here's a code snippet for figuring out whether a new position hits a wall:
@@ -325,6 +377,15 @@ class CornersProblem(search.SearchProblem):
             #   hitsWall = self.walls[nextx][nexty]
 
             "*** YOUR CODE HERE ***"
+            dx, dy = Actions.directionToVector(action)
+            nextx, nexty = int(x + dx), int(y + dy)
+            if not self.walls[nextx][nexty]:
+                next_position = (nextx, nexty)
+                left_over = foods
+                if next_position in left_over:
+                    left_over = set(left_over)
+                    left_over.remove(next_position)
+                successors.append((PositionWithFoods(next_position, left_over), action, 1))
 
         self._expanded += 1 # DO NOT CHANGE
         return successors
@@ -343,7 +404,7 @@ class CornersProblem(search.SearchProblem):
         return len(actions)
 
 
-def cornersHeuristic(state, problem):
+def cornersHeuristic(state: PositionWithFoods, problem: CornersProblem):
     """
     A heuristic for the CornersProblem that you defined.
 
@@ -360,7 +421,19 @@ def cornersHeuristic(state, problem):
     walls = problem.walls # These are the walls of the maze, as a Grid (game.py)
 
     "*** YOUR CODE HERE ***"
-    return 0 # Default to trivial solution
+    def manhattan(pos1, pos2):
+        p = PositionSearchProblem(problem.startingGameState, goal=pos1, start=pos2, warn=False)
+        return len(search.aStarSearch(p, manhattanHeuristic))
+        # return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
+    _min = float('inf')
+    pacman = state.position
+    foods = tuple(sorted(state.foods))
+    if len(foods) == 0:
+        return 0
+    for f in foods:
+        distance = manhattan(f, pacman) + problem.to_all_corners[(f, foods)]
+        _min = min(_min, distance)
+    return _min # Default to trivial solution
 
 class AStarCornersAgent(SearchAgent):
     "A SearchAgent for FoodSearchProblem using A* and your foodHeuristic"
