@@ -268,6 +268,8 @@ def euclideanHeuristic(position, problem, info={}):
 # This portion is incomplete.  Time to write code!  #
 #####################################################
 
+DIRECTIONS = [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST]
+
 Coordinate = Tuple[int, int]
 
 class PositionWithFoods:
@@ -304,37 +306,43 @@ class CornersProblem(search.SearchProblem):
         # in initializing the problem
         "*** YOUR CODE HERE ***"
         self.startState = PositionWithFoods(self.startingPosition, self.corners)
-        self.startingGameState = startingGameState
-        corners_distance = {}
-        for c1 in self.corners:
-            for c2 in self.corners:
-                if c1 == c2:
-                    corners_distance[(c1, c2)] = 0
-                elif (c2, c2) in corners_distance:
-                    corners_distance[(c1, c2)] = corners_distance[(c2, c1)]
-                else:
-                    problem = PositionSearchProblem(startingGameState, goal=c1, start=c2, warn=False)
-                    corners_distance[(c1, c2)] = len(search.aStarSearch(problem, manhattanHeuristic))
+
+        self.to_foods: Dict[Coordinate, Dict[Coordinate, float]] = {}
+        for c in self.corners:
+            queue = util.Queue()
+            queue.push((c, 0))
+            distances = {}
+            while not queue.isEmpty():
+                pos, dis = queue.pop()
+                x, y = pos
+                if pos in distances:
+                    continue
+                distances[pos] = dis
+                for action in DIRECTIONS:
+                    dx, dy = Actions.directionToVector(action)
+                    next_pos = int(x + dx), int(y + dy)
+                    nextx, nexty = next_pos
+                    if next_pos not in distances and not self.walls[nextx][nexty]:
+                        queue.push((next_pos, dis + 1))
+            self.to_foods[c] = distances
         
-        self.to_all_corners: Dict[Tuple[Coordinate, Tuple[Coordinate, ...]], float] = {}
-        def tmp(corners, curr):
-            key = (curr, tuple(sorted(corners)))
-            if len(corners) == 1:
-                self.to_all_corners[key] = 0
+        self.to_other_foods = {}
+        def tmp(foods, curr):
+            key = (curr, tuple(sorted(foods)))
+            if len(foods) == 1:
+                self.to_other_foods[key] = 0
                 return 0
 
-            if key in self.to_all_corners:
-                return self.to_all_corners[key]
+            if key in self.to_other_foods:
+                return self.to_other_foods[key]
 
-            left_overs = list(corners)
+            left_overs = list(foods)
             left_overs.remove(curr)
-            _min = float('inf')
-            for c in left_overs:
-                distance = corners_distance[(curr, c)] + tmp(left_overs, c)
-                _min = min(_min, distance)
-
-            self.to_all_corners[key] = _min
-            return _min
+            self.to_other_foods[key] = min(map(
+                lambda c: self.to_foods[curr][c] + tmp(left_overs, c),
+                left_overs
+            ))
+            return self.to_other_foods[key]
 
         for c in self.corners:
             tmp(self.corners, c)
@@ -368,7 +376,7 @@ class CornersProblem(search.SearchProblem):
         successors = []
         x, y = state.position
         foods = state.foods
-        for action in [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST]:
+        for action in DIRECTIONS:
             # Add a successor state to the successor list if the action is legal
             # Here's a code snippet for figuring out whether a new position hits a wall:
             #   x,y = currentPosition
@@ -421,19 +429,14 @@ def cornersHeuristic(state: PositionWithFoods, problem: CornersProblem):
     walls = problem.walls # These are the walls of the maze, as a Grid (game.py)
 
     "*** YOUR CODE HERE ***"
-    def manhattan(pos1, pos2):
-        p = PositionSearchProblem(problem.startingGameState, goal=pos1, start=pos2, warn=False)
-        return len(search.aStarSearch(p, manhattanHeuristic))
-        # return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
-    _min = float('inf')
     pacman = state.position
     foods = tuple(sorted(state.foods))
     if len(foods) == 0:
         return 0
-    for f in foods:
-        distance = manhattan(f, pacman) + problem.to_all_corners[(f, foods)]
-        _min = min(_min, distance)
-    return _min # Default to trivial solution
+    return min(map(
+        lambda f: problem.to_foods[f][pacman] + problem.to_other_foods[(f, foods)],
+        foods
+    ))
 
 class AStarCornersAgent(SearchAgent):
     "A SearchAgent for FoodSearchProblem using A* and your foodHeuristic"
