@@ -315,7 +315,7 @@ def betterEvaluationFunction(currentGameState: GameState):
     ghosts_cost = sum(map(d, ghosts_dis))
     s_ghosts_cost = sum(map(lambda x: x[0], filter(lambda x: x[0] < x[1], s_ghosts_dis)))
 
-    return score - foods_cost - capsules_cost - s_ghosts_cost - ghosts_cost
+    return score - (2 * foods_cost) - capsules_cost - s_ghosts_cost - ghosts_cost
 
 
 def _ghost_cost(_ghosts: List[AgentState], pos: Tuple[int, int], walls: Grid):
@@ -349,6 +349,9 @@ def _ghost_cost(_ghosts: List[AgentState], pos: Tuple[int, int], walls: Grid):
 
 
 def _food_cost(foodsList: List[Coordinate], pacman: Tuple[int, int], walls: Grid):
+    if len(foodsList) == 0:
+        return 0
+
     to_foods: Dict[Coordinate, Dict[Coordinate, float]] = {}
     for c in foodsList:
         queue = util.Queue()
