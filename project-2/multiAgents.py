@@ -12,11 +12,20 @@
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
 
+from typing import List, Tuple
+from pacman import GameState
 from util import manhattanDistance
 from game import Directions
 import random, util
 
-from game import Agent
+from game import Agent, Grid
+
+DIRECTIONS = [
+    [1, 0],
+    [0, 1],
+    [-1, 0],
+    [0, -1],
+]
 
 class ReflexAgent(Agent):
     """
@@ -68,13 +77,53 @@ class ReflexAgent(Agent):
         """
         # Useful information you can extract from a GameState (pacman.py)
         successorGameState = currentGameState.generatePacmanSuccessor(action)
+        walls = successorGameState.getWalls()
+        width = walls.width
+        height = walls.height
         newPos = successorGameState.getPacmanPosition()
         newFood = successorGameState.getFood()
         newGhostStates = successorGameState.getGhostStates()
         newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
 
         "*** YOUR CODE HERE ***"
-        return successorGameState.getScore()
+        ghosts = Grid(width, height)
+        for i in range(len(newGhostStates)):
+            if newScaredTimes[i] <= 0:
+                x, y = newGhostStates[i].getPosition()
+                ghosts[int(x)][int(y)] = True
+
+        queue = util.Queue()
+        queue.push((newPos, 0))
+        visited = set()
+        shortest = float('inf')
+        ghosts_dis = []
+        while not queue.isEmpty():
+            cur, dis = queue.pop()
+            x, y = cur
+            if in_range(cur, width, height) and not walls[x][y] and cur not in visited:
+                visited.add(cur)
+                if newFood[x][y]:
+                    shortest = min(dis, shortest)
+                if ghosts[x][y]:
+                    ghosts_dis.append(dis)
+                for d in DIRECTIONS:
+                    queue.push(((x + d[0], y + d[1]), dis + 1))
+        if shortest == float('inf'):
+            shortest = 0
+            
+        score = successorGameState.getScore()
+        def d(x):
+            if x == 0:
+                return float('inf')
+            return 9 / (x**2)
+        score -= shortest + sum(map(d, ghosts_dis))
+        if action == 'Stop':
+            score -= 10
+        return score
+
+def in_range(pos, width, height):
+    x, y = pos
+    return 0 <= x and x < width and 0 <= y and y < height
 
 def scoreEvaluationFunction(currentGameState):
     """
@@ -135,7 +184,28 @@ class MinimaxAgent(MultiAgentSearchAgent):
         Returns whether or not the game state is a losing state
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return self.minimax(gameState, 0)[1]
+
+    def minimax(self, gameState: GameState, idx: int) -> Tuple[float, str]:
+        n = gameState.getNumAgents()
+
+        if idx / n >= self.depth or gameState.isWin() or gameState.isLose():
+            return (self.evaluationFunction(gameState), None)
+
+        agent = idx % n
+        legalActions = gameState.getLegalActions(agent)
+
+        mod = 1 if agent == 0 else -1
+        best_score = -float('inf') * mod
+        best_action = None
+        for legalAction in legalActions:
+            s = gameState.generateSuccessor(agent, legalAction)
+            score = self.minimax(s, idx + 1)[0]
+            if score * mod > best_score * mod:
+                best_score, best_action = score, legalAction
+        
+        return (best_score, best_action)
+
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
     """
@@ -147,7 +217,33 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         Returns the minimax action using self.depth and self.evaluationFunction
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return self.alphabeta(gameState, 0, [-float('inf'), float('inf')])[1]
+
+    def alphabeta(self, gameState: GameState, idx: int, ab: List[float]) -> Tuple[float, str]:
+        n = gameState.getNumAgents()
+
+        if idx / n >= self.depth or gameState.isWin() or gameState.isLose():
+            return (self.evaluationFunction(gameState), None)
+
+        agent = idx % n
+        legalActions = gameState.getLegalActions(agent)
+
+        pacman = (agent == 0)
+        idx0 = int(pacman)
+        idx1 = int(not pacman)
+        mod = 1 if pacman else -1
+        best_score = -float('inf') * mod
+        best_action = None
+        for legalAction in legalActions:
+            s = gameState.generateSuccessor(agent, legalAction)
+            score = self.alphabeta(s, idx + 1, [*ab])[0]
+            if score * mod > best_score * mod:
+                best_score, best_action = score, legalAction
+            if best_score * mod > ab[idx0] * mod:
+                break
+            ab[idx1] = max(ab[idx1] * mod, best_score * mod) * mod
+        
+        return (best_score, best_action)
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
     """
