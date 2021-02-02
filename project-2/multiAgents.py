@@ -38,7 +38,7 @@ class ReflexAgent(Agent):
     """
 
 
-    def getAction(self, gameState):
+    def getAction(self, gameState: GameState) -> str:
         """
         You do not need to change this method, but you're welcome to.
 
@@ -60,7 +60,7 @@ class ReflexAgent(Agent):
 
         return legalMoves[chosenIndex]
 
-    def evaluationFunction(self, currentGameState, action):
+    def evaluationFunction(self, currentGameState: GameState, action: str) -> float:
         """
         Design a better evaluation function here.
 
@@ -160,7 +160,7 @@ class MinimaxAgent(MultiAgentSearchAgent):
     Your minimax agent (question 2)
     """
 
-    def getAction(self, gameState):
+    def getAction(self, gameState: GameState) -> str:
         """
         Returns the minimax action from the current gameState using self.depth
         and self.evaluationFunction.
@@ -184,9 +184,9 @@ class MinimaxAgent(MultiAgentSearchAgent):
         Returns whether or not the game state is a losing state
         """
         "*** YOUR CODE HERE ***"
-        return self.minimax(gameState, 0)[1]
+        return self._minimax(gameState, 0)[1]
 
-    def minimax(self, gameState: GameState, idx: int) -> Tuple[float, str]:
+    def _minimax(self, gameState: GameState, idx: int) -> Tuple[float, str]:
         n = gameState.getNumAgents()
 
         if idx / n >= self.depth or gameState.isWin() or gameState.isLose():
@@ -200,7 +200,7 @@ class MinimaxAgent(MultiAgentSearchAgent):
         best_action = None
         for legalAction in legalActions:
             s = gameState.generateSuccessor(agent, legalAction)
-            score = self.minimax(s, idx + 1)[0]
+            score = self._minimax(s, idx + 1)[0]
             if score * mod > best_score * mod:
                 best_score, best_action = score, legalAction
         
@@ -212,14 +212,14 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
     Your minimax agent with alpha-beta pruning (question 3)
     """
 
-    def getAction(self, gameState):
+    def getAction(self, gameState: GameState) -> str:
         """
         Returns the minimax action using self.depth and self.evaluationFunction
         """
         "*** YOUR CODE HERE ***"
-        return self.alphabeta(gameState, 0, [-float('inf'), float('inf')])[1]
+        return self._alphabeta(gameState, 0, [-float('inf'), float('inf')])[1]
 
-    def alphabeta(self, gameState: GameState, idx: int, ab: List[float]) -> Tuple[float, str]:
+    def _alphabeta(self, gameState: GameState, idx: int, ab: List[float]) -> Tuple[float, str]:
         n = gameState.getNumAgents()
 
         if idx / n >= self.depth or gameState.isWin() or gameState.isLose():
@@ -236,7 +236,7 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         best_action = None
         for legalAction in legalActions:
             s = gameState.generateSuccessor(agent, legalAction)
-            score = self.alphabeta(s, idx + 1, [*ab])[0]
+            score = self._alphabeta(s, idx + 1, [*ab])[0]
             if score * mod > best_score * mod:
                 best_score, best_action = score, legalAction
             if best_score * mod > ab[idx0] * mod:
@@ -258,7 +258,31 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         legal moves.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return self._expectimax(gameState, 0)[1]
+
+    def _expectimax(self, gameState: GameState, idx: int) -> Tuple[float, str]:
+        n = gameState.getNumAgents()
+
+        if idx / n >= self.depth or gameState.isWin() or gameState.isLose():
+            return (self.evaluationFunction(gameState), None)
+
+        agent = idx % n
+        legalActions = gameState.getLegalActions(agent)
+        n_actions = len(legalActions)
+
+        ret_score = -float('inf') if agent == 0 else 0
+        ret_action = None
+
+        for legalAction in legalActions:
+            s = gameState.generateSuccessor(agent, legalAction)
+            score = self._expectimax(s, idx + 1)[0]
+            if agent != 0:
+                ret_score += score / n_actions
+            elif score > ret_score:
+                ret_score, ret_action = score, legalAction
+        
+        return (ret_score, ret_action)
+
 
 def betterEvaluationFunction(currentGameState):
     """
