@@ -12,10 +12,10 @@
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
 
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 from pacman import GameState
 from util import manhattanDistance
-from game import Directions
+from game import AgentState, Directions, Actions
 import random, util
 
 from game import Agent, Grid
@@ -284,7 +284,10 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         return (ret_score, ret_action)
 
 
-def betterEvaluationFunction(currentGameState):
+Coordinate = Tuple[int, int]
+
+
+def betterEvaluationFunction(currentGameState: GameState):
     """
     Your extreme ghost-hunting, pellet-nabbing, food-gobbling, unstoppable
     evaluation function (question 5).
@@ -292,7 +295,93 @@ def betterEvaluationFunction(currentGameState):
     DESCRIPTION: <write something here so we know what you did>
     """
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    pos = currentGameState.getPacmanPosition()
+    foods = currentGameState.getFood()
+    walls = currentGameState.getWalls()
+    capsules = currentGameState.getCapsules()
+    ghosts = currentGameState.getGhostStates()
+
+    score = currentGameState.getScore()
+    foods_cost = _food_cost(foods.asList(), pos, walls)
+    capsules_cost = _food_cost(capsules, pos, walls)
+
+    ghosts_dis, s_ghosts_dis = _ghost_cost(ghosts, pos, walls)
+
+    def d(x):
+        if x == 0:
+            return float('inf')
+        return 9 / (x**2)
+
+    ghosts_cost = sum(map(d, ghosts_dis))
+    s_ghosts_cost = sum(map(lambda x: x[0], filter(lambda x: x[0] < x[1], s_ghosts_dis)))
+
+    return score - foods_cost - capsules_cost - s_ghosts_cost - ghosts_cost
+
+
+def _ghost_cost(_ghosts: List[AgentState], pos: Tuple[int, int], walls: Grid):
+    width = walls.width
+    height = walls.height
+
+    ghosts = Grid(width, height)
+    for i in range(len(_ghosts)):
+        x, y = _ghosts[i].getPosition()
+        ghosts[int(x)][int(y)] = _ghosts[i].scaredTimer
+
+    queue = util.Queue()
+    queue.push((pos, 0))
+    visited = set()
+    ghosts_dis = []
+    s_ghosts_dis = []
+    while not queue.isEmpty():
+        cur, dis = queue.pop()
+        x, y = cur
+        if in_range(cur, width, height) and not walls[x][y] and cur not in visited:
+            visited.add(cur)
+            if ghosts[x][y] != False:
+                if ghosts[x][y] <= 0:
+                    ghosts_dis.append(dis)
+                else:
+                    s_ghosts_dis.append((dis, ghosts[x][y]))
+                    pass
+            for d in DIRECTIONS:
+                queue.push(((x + d[0], y + d[1]), dis + 1))
+    return ghosts_dis, s_ghosts_dis
+
+
+def _food_cost(foodsList: List[Coordinate], pacman: Tuple[int, int], walls: Grid):
+    to_foods: Dict[Coordinate, Dict[Coordinate, float]] = {}
+    for c in foodsList:
+        queue = util.Queue()
+        queue.push((c, 0))
+        distances = {}
+        while not queue.isEmpty():
+            pos, dis = queue.pop()
+            x, y = pos
+            if pos in distances:
+                continue
+            distances[pos] = dis
+            for (dx, dy) in DIRECTIONS:
+                next_pos = int(x + dx), int(y + dy)
+                nextx, nexty = next_pos
+                if next_pos not in distances and not walls[nextx][nexty]:
+                    queue.push((next_pos, dis + 1))
+        to_foods[c] = distances
+
+    pq = util.PriorityQueueWithFunction(lambda x: x[-1])
+    pq.push((foodsList[0], 0))
+    visited = set()
+    food_cost = min(map(lambda food: to_foods[food][pacman], foodsList))
+    while not pq.isEmpty():
+        position, cost = pq.pop()
+        if position in visited:
+            continue
+        visited.add(position)
+        food_cost += cost
+        for food in foodsList:
+            if food not in visited:
+                pq.push((food, to_foods[food][position]))
+    return food_cost
+
 
 # Abbreviation
 better = betterEvaluationFunction
