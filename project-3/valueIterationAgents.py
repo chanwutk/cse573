@@ -67,16 +67,13 @@ class ValueIterationAgent(ValueEstimationAgent):
         actions = {}
         for state in states:
             actions[state] = self.mdp.getPossibleActions(state)
+        states = list(filter(lambda state: len(actions[state]) != 0, states))
 
         for _ in range(self.iterations):
             newValues = util.Counter()
 
             for state in states:
-                if len(actions[state]) == 0: continue
-                newValues[state] = max(map(
-                    lambda action: self.computeQValueFromValues(state, action),
-                    actions[state]
-                ))
+                newValues[state] = self._maxQ(state, actions)
 
             self.values = newValues
 
@@ -125,6 +122,13 @@ class ValueIterationAgent(ValueEstimationAgent):
     def getQValue(self, state, action):
         return self.computeQValueFromValues(state, action)
 
+    def _maxQ(self, state, actions):
+        return max(map(
+            lambda action: self.computeQValueFromValues(state, action),
+            actions[state]
+        ))
+
+
 class AsynchronousValueIterationAgent(ValueIterationAgent):
     """
         * Please read learningAgents.py before reading this.*
@@ -164,10 +168,7 @@ class AsynchronousValueIterationAgent(ValueIterationAgent):
         for i in range(self.iterations):
             state = states[i % len_states]
             if len(actions[state]) == 0: continue
-            self.values[state] = max(map(
-                lambda action: self.computeQValueFromValues(state, action),
-                actions[state]
-            ))
+            self.values[state] = self._maxQ(state, actions)
 
 class PrioritizedSweepingValueIterationAgent(AsynchronousValueIterationAgent):
     """
@@ -188,4 +189,39 @@ class PrioritizedSweepingValueIterationAgent(AsynchronousValueIterationAgent):
 
     def runValueIteration(self):
         "*** YOUR CODE HERE ***"
+        states = list(self.mdp.getStates())
+        actions, predecessors = self._findActionsAndPredecessors(states)
+        pqueue = self._findPriority(states, actions)
+        
+        for _ in range(self.iterations):
+            if pqueue.isEmpty(): break
+            state = pqueue.pop()
+            if len(actions[state]) == 0: continue
+            self.values[state] = self._maxQ(state, actions)
 
+            for pred in predecessors[state]:
+                if len(actions[pred]) == 0: continue
+                diff = abs(self.values[pred] - self._maxQ(pred, actions))
+                if diff > self.theta:
+                    pqueue.update(pred, -diff)
+
+    def _findActionsAndPredecessors(self, states):
+        actions = {}
+        predecessors = {}
+        for state in states:
+            actions[state] = self.mdp.getPossibleActions(state)
+            for action in actions[state]:
+                for (nextState, prob) in self.mdp.getTransitionStatesAndProbs(state, action):
+                    if prob != 0:
+                        if nextState not in predecessors:
+                            predecessors[nextState] = []
+                        predecessors[nextState].append(state)
+        return actions, predecessors
+    
+    def _findPriority(self, states, actions):
+        pqueue = util.PriorityQueue()
+        for state in states:
+            if len(actions[state]) == 0: continue
+            diff = abs(self.values[state] - self._maxQ(state, actions))
+            pqueue.push(state, -diff)
+        return pqueue
