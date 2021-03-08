@@ -294,7 +294,7 @@ class ExactInference(InferenceModule):
 
         self.beliefs.normalize()
 
-    def elapseTime(self, gameState):
+    def elapseTime(self, gameState: busters.GameState):
         """
         Predict beliefs in response to a time step passing from the current
         state.
@@ -304,7 +304,14 @@ class ExactInference(InferenceModule):
         current position is known.
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        beliefs = DiscreteDistribution()
+        for oldPos in self.allPositions:
+            newPosDist = self.getPositionDistribution(gameState, oldPos)
+            oldProp = self.beliefs[oldPos]
+            for pos in self.allPositions:
+                beliefs[pos] += oldProp * newPosDist[pos]
+        beliefs.normalize()
+        self.beliefs = beliefs
 
     def getBeliefDistribution(self):
         return self.beliefs

@@ -19,6 +19,14 @@
       "program": "autograder.py",
       "console": "integratedTerminal",
       "args": ["-q", "q2"]
+    },
+    {
+      "name": "q3 no graphics",
+      "type": "python",
+      "request": "launch",
+      "program": "autograder.py",
+      "console": "integratedTerminal",
+      "args": ["-q", "q3", "--no-graphics"]
     }
   ]
 }
