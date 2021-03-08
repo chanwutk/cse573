@@ -270,7 +270,7 @@ class ExactInference(InferenceModule):
             self.beliefs[p] = 1.0
         self.beliefs.normalize()
 
-    def observeUpdate(self, observation, gameState):
+    def observeUpdate(self, observation: float, gameState: busters.GameState):
         """
         Update beliefs based on the distance observation and Pacman's position.
 
@@ -286,7 +286,10 @@ class ExactInference(InferenceModule):
         position is known.
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        pacmanPosition = gameState.getPacmanPosition()
+        jailPosition = self.getJailPosition()
+        for pos in self.allPositions:
+            self.beliefs[pos] = self.getObservationProb(observation, pacmanPosition, pos, jailPosition)
 
         self.beliefs.normalize()
 
