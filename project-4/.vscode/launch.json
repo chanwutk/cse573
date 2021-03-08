@@ -5,12 +5,20 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Autograder",
+      "name": "q2 no graphics",
       "type": "python",
       "request": "launch",
       "program": "autograder.py",
       "console": "integratedTerminal",
       "args": ["-q", "q2", "--no-graphics"]
+    },
+    {
+      "name": "q2",
+      "type": "python",
+      "request": "launch",
+      "program": "autograder.py",
+      "console": "integratedTerminal",
+      "args": ["-q", "q2"]
     }
   ]
 }
