@@ -428,7 +428,7 @@ class JointParticleFilter(ParticleFilter):
         self.particles = []
         "*** YOUR CODE HERE ***"
         lenPositions = len(self.legalPositions)
-        ghostPositions = [0 for _ in range(gameState.getNumAgents() - 1)]
+        ghostPositions = [0 for _ in range(self.numGhosts)]
         for i in range(self.numParticles):
             particle = tuple(map(lambda x: self.legalPositions[x], ghostPositions))
             self.particles.append(particle)
