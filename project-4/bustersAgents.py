@@ -12,6 +12,7 @@
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
 
+from typing import Tuple
 import util
 from game import Agent
 from game import Directions
@@ -131,7 +132,7 @@ class GreedyBustersAgent(BustersAgent):
         BustersAgent.registerInitialState(self, gameState)
         self.distancer = Distancer(gameState.data.layout, False)
 
-    def chooseAction(self, gameState):
+    def chooseAction(self, gameState: busters.GameState):
         """
         First computes the most likely position of each ghost that has
         not yet been captured, then chooses an action that brings
@@ -144,3 +145,19 @@ class GreedyBustersAgent(BustersAgent):
             [beliefs for i, beliefs in enumerate(self.ghostBeliefs)
              if livingGhosts[i+1]]
         "*** YOUR CODE HERE ***"
+        def mostLikelyPosition(beliefs: inference.DiscreteDistribution):
+            return beliefs.argMax()
+
+        def distanceFromPacmanToPos(pos):
+            return self.distancer.getDistance(pacmanPosition, pos)
+
+        ghostPos = map(mostLikelyPosition, livingGhostPositionDistributions)
+        minGhostPos = min(ghostPos, key=distanceFromPacmanToPos)
+
+        def distanceFromPacmanWithActionToGhost(action):
+            successorPosition = Actions.getSuccessor(pacmanPosition, action)
+            return self.distancer.getDistance(successorPosition, minGhostPos)
+        
+        return min(legal, key=distanceFromPacmanWithActionToGhost)
+
+
