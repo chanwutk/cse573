@@ -419,7 +419,7 @@ class JointParticleFilter(ParticleFilter):
         self.legalPositions = legalPositions
         self.initializeUniformly(gameState)
 
-    def initializeUniformly(self, gameState):
+    def initializeUniformly(self, gameState: busters.GameState):
         """
         Initialize particles to be consistent with a uniform prior. Particles
         should be evenly distributed across positions in order to ensure a
@@ -427,7 +427,18 @@ class JointParticleFilter(ParticleFilter):
         """
         self.particles = []
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        lenPositions = len(self.legalPositions)
+        ghostPositions = [0 for _ in range(gameState.getNumAgents() - 1)]
+        for i in range(self.numParticles):
+            particle = tuple(map(lambda x: self.legalPositions[x], ghostPositions))
+            self.particles.append(particle)
+
+            ghostPositions[0] += 1
+            for i in range(len(ghostPositions)):
+                if ghostPositions[i] >= lenPositions:
+                    if i + 1 < len(ghostPositions):
+                        ghostPositions[i + 1] += ghostPositions[i] // lenPositions
+                    ghostPositions[i] %= lenPositions
 
     def addGhostAgent(self, agent):
         """
