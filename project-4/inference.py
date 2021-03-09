@@ -342,7 +342,7 @@ class ParticleFilter(InferenceModule):
         for i in range(self.numParticles):
             self.particles.append(self.legalPositions[i % lenPositions])
 
-    def observeUpdate(self, observation, gameState):
+    def observeUpdate(self, observation, gameState: busters.GameState):
         """
         Update beliefs based on the distance observation and Pacman's position.
 
@@ -355,7 +355,18 @@ class ParticleFilter(InferenceModule):
         the DiscreteDistribution may be useful.
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        pacmanPosition = gameState.getPacmanPosition()
+        jailPosition = self.getJailPosition()
+        beliefs = DiscreteDistribution()
+
+        for pos in self.particles:
+            beliefs[pos] += self.getObservationProb(observation, pacmanPosition, pos, jailPosition)
+        
+        if beliefs.total() == 0:
+            self.initializeUniformly(gameState)
+            return
+
+        self.particles = [beliefs.sample() for _ in range(self.numParticles)]
 
     def elapseTime(self, gameState):
         """
