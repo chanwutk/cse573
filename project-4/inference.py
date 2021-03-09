@@ -359,8 +359,8 @@ class ParticleFilter(InferenceModule):
         jailPosition = self.getJailPosition()
         beliefs = DiscreteDistribution()
 
-        for pos in self.particles:
-            beliefs[pos] += self.getObservationProb(observation, pacmanPosition, pos, jailPosition)
+        for particle in self.particles:
+            beliefs[particle] += self.getObservationProb(observation, pacmanPosition, particle, jailPosition)
         
         if beliefs.total() == 0:
             self.initializeUniformly(gameState)
@@ -368,13 +368,23 @@ class ParticleFilter(InferenceModule):
 
         self.particles = [beliefs.sample() for _ in range(self.numParticles)]
 
-    def elapseTime(self, gameState):
+    def elapseTime(self, gameState: busters.GameState):
         """
         Sample each particle's next state based on its current state and the
         gameState.
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        beliefs = DiscreteDistribution()
+        particleCount = DiscreteDistribution()
+        for particle in self.particles:
+            particleCount[particle] += 1
+
+        for particle, count in particleCount.items():
+            newPosDist = self.getPositionDistribution(gameState, particle)
+            for pos in self.allPositions:
+                beliefs[pos] += count * newPosDist[pos]
+        
+        self.particles = [beliefs.sample() for _ in range(self.numParticles)]
 
     def getBeliefDistribution(self):
         """
